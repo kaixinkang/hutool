@@ -50,6 +50,7 @@ public class TimedCache<K, V> extends AbstractCache<K, V> {
 	 * @return 清理数
 	 */
 	@Override
+
 	protected int pruneCache() {
 		int count = 0;
 		Iterator<CacheObj<K, V>> values = cacheMap.values().iterator();
