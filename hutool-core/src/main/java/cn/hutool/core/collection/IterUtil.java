@@ -5,10 +5,12 @@ import cn.hutool.core.lang.Filter;
 import cn.hutool.core.lang.func.Func1;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ArrayUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -16,6 +18,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * {@link Iterable} 和 {@link Iterator} 相关工具类
@@ -158,16 +162,10 @@ public class IterUtil {
 	public static <T> Map<T, Integer> countMap(Iterator<T> iter) {
 		final HashMap<T, Integer> countMap = new HashMap<>();
 		if (null != iter) {
-			Integer count;
 			T t;
 			while (iter.hasNext()) {
 				t = iter.next();
-				count = countMap.get(t);
-				if (null == count) {
-					countMap.put(t, 1);
-				} else {
-					countMap.put(t, count + 1);
-				}
+				countMap.put(t, countMap.getOrDefault(t, 0) + 1);
 			}
 		}
 		return countMap;
@@ -458,6 +456,122 @@ public class IterUtil {
 	}
 
 	/**
+	 * 将列表转成值为List的HashMap
+	 *
+	 * @param iterable  值列表
+	 * @param keyMapper Map的键映射
+	 * @param <K>       键类型
+	 * @param <V>       值类型
+	 * @return HashMap
+	 * @since 5.3.6
+	 */
+	public static <K, V> Map<K, List<V>> toListMap(Iterable<V> iterable, Function<V, K> keyMapper) {
+		return toListMap(iterable, keyMapper, v -> v);
+	}
+
+	/**
+	 * 将列表转成值为List的HashMap
+	 *
+	 * @param iterable    值列表
+	 * @param keyMapper   Map的键映射
+	 * @param valueMapper Map中List的值映射
+	 * @param <T>         列表值类型
+	 * @param <K>         键类型
+	 * @param <V>         值类型
+	 * @return HashMap
+	 * @since 5.3.6
+	 */
+	public static <T, K, V> Map<K, List<V>> toListMap(Iterable<T> iterable, Function<T, K> keyMapper, Function<T, V> valueMapper) {
+		return toListMap(MapUtil.newHashMap(), iterable, keyMapper, valueMapper);
+	}
+
+	/**
+	 * 将列表转成值为List的HashMap
+	 *
+	 * @param resultMap   结果Map，可自定义结果Map类型
+	 * @param iterable    值列表
+	 * @param keyMapper   Map的键映射
+	 * @param valueMapper Map中List的值映射
+	 * @param <T>         列表值类型
+	 * @param <K>         键类型
+	 * @param <V>         值类型
+	 * @return HashMap
+	 * @since 5.3.6
+	 */
+	public static <T, K, V> Map<K, List<V>> toListMap(Map<K, List<V>> resultMap, Iterable<T> iterable, Function<T, K> keyMapper, Function<T, V> valueMapper) {
+		if (null == resultMap) {
+			resultMap = MapUtil.newHashMap();
+		}
+		if (ObjectUtil.isNull(iterable)) {
+			return resultMap;
+		}
+
+		for (T value : iterable) {
+			resultMap.computeIfAbsent(keyMapper.apply(value), k -> new ArrayList<>()).add(valueMapper.apply(value));
+		}
+
+		return resultMap;
+	}
+
+	/**
+	 * 将列表转成HashMap
+	 *
+	 * @param iterable  值列表
+	 * @param keyMapper Map的键映射
+	 * @param <K>       键类型
+	 * @param <V>       值类型
+	 * @return HashMap
+	 * @since 5.3.6
+	 */
+	public static <K, V> Map<K, V> toMap(Iterable<V> iterable, Function<V, K> keyMapper) {
+		return toMap(iterable, keyMapper, v -> v);
+	}
+
+	/**
+	 * 将列表转成HashMap
+	 *
+	 * @param iterable    值列表
+	 * @param keyMapper   Map的键映射
+	 * @param valueMapper Map的值映射
+	 * @param <T>         列表值类型
+	 * @param <K>         键类型
+	 * @param <V>         值类型
+	 * @return HashMap
+	 * @since 5.3.6
+	 */
+	public static <T, K, V> Map<K, V> toMap(Iterable<T> iterable, Function<T, K> keyMapper, Function<T, V> valueMapper) {
+		return toMap(MapUtil.newHashMap(), iterable, keyMapper, valueMapper);
+	}
+
+	/**
+	 * 将列表转成Map
+	 *
+	 * @param resultMap   结果Map，通过传入map对象决定结果的Map类型
+	 * @param iterable    值列表
+	 * @param keyMapper   Map的键映射
+	 * @param valueMapper Map的值映射
+	 * @param <T>         列表值类型
+	 * @param <K>         键类型
+	 * @param <V>         值类型
+	 * @return HashMap
+	 * @since 5.3.6
+	 */
+	public static <T, K, V> Map<K, V> toMap(Map<K, V> resultMap, Iterable<T> iterable, Function<T, K> keyMapper, Function<T, V> valueMapper) {
+		if (null == resultMap) {
+			resultMap = MapUtil.newHashMap();
+		}
+		if (ObjectUtil.isNull(iterable)) {
+			return resultMap;
+		}
+
+		for (T value : iterable) {
+			resultMap.put(keyMapper.apply(value), valueMapper.apply(value));
+		}
+
+		return resultMap;
+	}
+
+	/**
 	 * Iterator转List<br>
 	 * 不判断，直接生成新的List
 	 *
@@ -493,7 +607,7 @@ public class IterUtil {
 	/**
 	 * Enumeration转换为Iterator
 	 * <p>
-	 * Adapt the specified <code>Enumeration</code> to the <code>Iterator</code> interface
+	 * Adapt the specified {@code Enumeration} to the {@code Iterator} interface
 	 *
 	 * @param <E> 集合元素类型
 	 * @param e   {@link Enumeration}
@@ -688,5 +802,91 @@ public class IterUtil {
 	 */
 	public static <T> Iterator<T> empty() {
 		return Collections.emptyIterator();
+	}
+
+	/**
+	 * 按照给定函数，转换{@link Iterator}为另一种类型的{@link Iterator}
+	 *
+	 * @param <F>      源元素类型
+	 * @param <T>      目标元素类型
+	 * @param iterator 源{@link Iterator}
+	 * @param function 转换函数
+	 * @return 转换后的{@link Iterator}
+	 * @since 5.4.3
+	 */
+	public static <F, T> Iterator<T> trans(Iterator<F> iterator, Function<? super F, ? extends T> function) {
+		return new TransIter<>(iterator, function);
+	}
+
+	/**
+	 * 返回 Iterable 对象的元素数量
+	 *
+	 * @param iterable Iterable对象
+	 * @return Iterable对象的元素数量
+	 * @since 5.5.0
+	 */
+	public static int size(final Iterable<?> iterable) {
+		if(null == iterable){
+			return 0;
+		}
+
+		if (iterable instanceof Collection<?>) {
+			return ((Collection<?>) iterable).size();
+		} else {
+			return size(iterable.iterator());
+		}
+	}
+
+	/**
+	 * 返回 Iterator 对象的元素数量
+	 *
+	 * @param iterator Iterator对象
+	 * @return Iterator对象的元素数量
+	 * @since 5.5.0
+	 */
+	public static int size(final Iterator<?> iterator) {
+		int size = 0;
+		if (iterator != null) {
+			while (iterator.hasNext()) {
+				iterator.next();
+				size++;
+			}
+		}
+		return size;
+	}
+
+	/**
+	 * 判断两个{@link Iterable} 是否元素和顺序相同，返回{@code true}的条件是：
+	 * <ul>
+	 *     <li>两个{@link Iterable}必须长度相同</li>
+	 *     <li>两个{@link Iterable}元素相同index的对象必须equals，满足{@link Objects#equals(Object, Object)}</li>
+	 * </ul>
+	 * 此方法来自Apache-Commons-Collections4。
+	 *
+	 * @param list1 列表1
+	 * @param list2 列表2
+	 * @return 是否相同
+	 * @since 5.6.0
+	 */
+	public static boolean isEqualList(final Iterable<?> list1, final Iterable<?> list2) {
+		if (list1 == list2) {
+			return true;
+		}
+
+		final Iterator<?> it1 = list1.iterator();
+		final Iterator<?> it2 = list2.iterator();
+		Object obj1;
+		Object obj2;
+		while (it1.hasNext() && it2.hasNext()) {
+			obj1 = it1.next();
+			obj2 = it2.next();
+
+			if (false == Objects.equals(obj1, obj2)) {
+				return false;
+			}
+		}
+
+		// 当两个Iterable长度不一致时返回false
+		return false == (it1.hasNext() || it2.hasNext());
 	}
 }
